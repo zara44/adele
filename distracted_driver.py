@@ -3,8 +3,22 @@ import shutil
 import random
 import numpy as np
 import pandas as pd
+from keras.applications.vgg16 import VGG16
+from keras.preprocessing import image
+from keras.applications.vgg16 import preprocess_input, decode_predictions
+from keras.optimizers import SGD, Adadelta, Adagrad, Adam
+from keras import utils
+from keras.preprocessing.image import ImageDataGenerator
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout, Flatten
+from keras.layers import Conv2D
+from keras.layers import MaxPooling2D
 
+# set up the paths
 path = 'C:\\workspace\\kaggle\\distracted_driver\\data\\'
+vgg_path = 'C:\\workspace\\model_weights'
+
+
 
 # stratify split
 def split_train_valid_set(path):
@@ -17,36 +31,30 @@ def split_train_valid_set(path):
             shutil.move(os.path.join(os.path.join(os.path.join(path ,'train'), categ), f),os.path.join(os.path.join(os.path.join(path ,'valid'), categ), f))
     return
 
-def generate_sample_dataset(path,foo):
+def generate_sample_dataset(path,foo,percent):
     # foo = 'test'
     for categ in os.listdir(os.path.join(path,foo)):
         print(categ)
         ls = os.listdir(os.path.join(os.path.join(path ,foo), categ))
-        ls = random.sample(ls, int(len(ls)*0.05))
+        ls = random.sample(ls, int(len(ls)*percent))
         for f in ls:
             print(f)
             shutil.move(os.path.join(os.path.join(os.path.join(path ,foo), categ), f),os.path.join(os.path.join(os.path.join(os.path.join(path,'sample') ,foo), categ), f))
     return
 
-from keras.applications.vgg16 import VGG16
-from keras.preprocessing import image
-from keras.applications.vgg16 import preprocess_input, decode_predictions
-from keras.optimizers import SGD, Adadelta, Adagrad, Adam
-from keras import utils
-from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Dropout, Flatten
-from keras.layers import Conv2D
-from keras.layers import MaxPooling2D
+# split_train_valid_set(path)
+# generate_sample_dataset(path,'valid',0.05)
 
+# image generators
+batches = 256
 # image generators
 
 test_datagen = ImageDataGenerator(rescale=1./255)
 
 test_generator = test_datagen.flow_from_directory(
-        os.path.join(os.path.join(path,'sample'),'test'),
+        os.path.join(path,'test'),
         target_size=(224, 224),
-        batch_size=32,
+        batch_size=batches,
         class_mode='binary')
 
 train_datagen = ImageDataGenerator(
@@ -57,9 +65,9 @@ train_datagen = ImageDataGenerator(
     height_shift_range=0.2,
     horizontal_flip=True)
 train_generator = train_datagen.flow_from_directory(
-        os.path.join(os.path.join(path,'sample'),'train'),
+        os.path.join(path,'train'),
         target_size=(224, 224),
-        batch_size=32)
+        batch_size=batches)
 
 valid_datagen = ImageDataGenerator(
     featurewise_center=True,
@@ -69,14 +77,15 @@ valid_datagen = ImageDataGenerator(
     height_shift_range=0.2,
     horizontal_flip=True)
 valid_generator = train_datagen.flow_from_directory(
-        os.path.join(os.path.join(path,'sample'),'valid'),
+        os.path.join(path,'valid'),
         target_size=(224, 224),
-        batch_size=32)
+        batch_size=batches)
+
 
 
 # vgg model
 vgg_model = VGG16(include_top=True, weights=None, input_tensor=None, input_shape=None, pooling=None, classes=1000)
-vgg_path = 'C:\\workspace\\model_weights'
+
 vgg_model.load_weights(os.path.join(vgg_path,'vgg_imagenet_weights.h5'))
 
 vgg_model.compile(optimizer=Adam(lr=0.001),loss='categorical_crossentropy', metrics=['accuracy'])
